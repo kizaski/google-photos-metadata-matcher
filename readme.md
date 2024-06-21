@@ -15,3 +15,5 @@ Faster alternative to https://github.com/anderbggo/GooglePhotosMatcher
 - There are two checkboxes which are not implemented and should not be checked
 
 - Does not match geo data
+
+- Does not delete the json files
