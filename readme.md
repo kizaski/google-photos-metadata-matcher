@@ -13,3 +13,5 @@ Faster alternative to https://github.com/anderbggo/GooglePhotosMatcher
 - You have to build it yourself currently
 
 - There are two checkboxes which are not implemented and should not be checked
+
+- Does not match geo data
