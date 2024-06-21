@@ -1,0 +1,22 @@
+[package]
+name = "google-photos-metadata-matcher"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+filetime = "0.2"
+egui = "0.27.2"
+eframe = "0.27.2"
+env_logger = "0.11.3"
+log = "0.4.21"
+rfd = "0.14.1"
+serde = "1.0"
+serde_json = "1.0"
+async-std = "1.12.0"
+filetime_creation = "0.2"
+
+[[bin]]
+name = "google-photos-metadata-matcher"
+path = "main.rs"

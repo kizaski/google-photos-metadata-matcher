@@ -1,0 +1,12 @@
+/target
+/debug
+**/*.rs.bk
+*.pdb
+
+.vscode
+
+# for testing purposes
+photos
+photos_backup
+photos_big
+photos_big_backup
