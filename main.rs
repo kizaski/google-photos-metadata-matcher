@@ -12,11 +12,12 @@ use std::time::{Duration, SystemTime};
 use std::vec::Vec;
 
 // todo
-// fix error window bug
+// error window
 // show skipped files count
 // show matched files count
-// time elapsed
-// fix initially no indication it's working
+// geo data
+// subdirs
+// optionally delete jsons
 
 fn main() -> Result<(), eframe::Error> {
     env_logger::init();
@@ -37,6 +38,7 @@ struct Matcher {
     should_copy: bool,
     should_go_over_subdirs: bool,
     progress: Arc<Mutex<f32>>,
+    working_message: String,
 }
 
 impl Default for Matcher {
@@ -47,6 +49,7 @@ impl Default for Matcher {
             should_copy: false,
             should_go_over_subdirs: false,
             progress: Arc::new(Mutex::new(0.0)),
+            working_message: "".to_string(),
         }
     }
 }
@@ -85,13 +88,17 @@ impl eframe::App for Matcher {
             }
 
             // Those are not implemented
-            ui.checkbox(&mut self.should_copy, "Copy photos to new folder");
-            ui.checkbox(&mut self.should_go_over_subdirs, "Go over subdirectories");
+            // ui.checkbox(&mut self.should_copy, "Copy photos to new folder");
+            // ui.checkbox(&mut self.should_go_over_subdirs, "Go over subdirectories");
             // ui.checkbox(, "Delete json files");
 
             // Match metadata button
             if ui.button("Match metadata").clicked() {
-                println!("Working...");
+                if self.selected_folder == None {
+                    return;
+                }
+
+                self.working_message = "Working...".to_string();
 
                 let matcher = Matcher {
                     folder_path: self.folder_path.clone(),
@@ -99,8 +106,10 @@ impl eframe::App for Matcher {
                     should_copy: self.should_copy,
                     should_go_over_subdirs: self.should_go_over_subdirs,
                     progress: self.progress.clone(),
+                    working_message: "".to_string(),
                 };
-                let ctx = ctx.clone();
+
+                let ctx_clone = ctx.clone();
 
                 async_std::task::spawn(async move {
                     match matcher.selected_folder {
@@ -109,8 +118,8 @@ impl eframe::App for Matcher {
                                 folder,
                                 matcher.should_go_over_subdirs,
                                 matcher.should_copy,
-                                matcher.progress.clone(),
-                                ctx,
+                                matcher.progress,
+                                ctx_clone,
                             )
                             .await;
                         }
@@ -121,17 +130,16 @@ impl eframe::App for Matcher {
                 });
             }
 
-            if self.selected_folder == None {
-                ui.label("No folder selected");
-            }
-
             // Progress bar
             let prog = self.progress.lock().unwrap();
             if *prog > 0.0 && *prog < 1.0 {
                 ui.add(ProgressBar::new(*prog).show_percentage());
             } else if *prog >= 1.0 {
                 ui.label("Metadata processing complete");
+                self.working_message = "".to_string();
             }
+
+            ui.label(&self.working_message);
         });
     }
 }
@@ -149,31 +157,22 @@ async fn match_metadata(
 
     let (progress_sender, progress_receiver) = mpsc::channel();
 
-    let ctx_clone = ctx.clone();
+    // let ctx_clone = ctx.clone();
 
     async_std::task::spawn(async move {
         if search_subdirs {
-            // unimplemented!();
-            async_std::task::block_on(async {
-                // fix: disappears immediately
-                display_error(
-                    &ctx_clone,
-                    "Searching subdirectories is currently unimplemented.",
-                )
-                .await;
-            });
-            return;
+            unimplemented!();
+            // disappears immediately due to request_repaint() on progress_receiver.recv()
+            // display_error(
+            //     &ctx_clone,
+            //     "Searching subdirectories is currently unimplemented.",
+            // )
+            // .await;
+            // return;
         } else {
             // search for jsons
             let json_paths = get_jsons(&path).await;
             let metadata = extract_metadata(json_paths).await;
-            match progress_sender.send(0.05) {
-                Ok(_) => println!("Sent progress: {}", 0.05),
-                Err(err) => {
-                    println!("Error sending progress: {}", err);
-                    return;
-                }
-            }
 
             // open the files by the title inside of the json file and match the timestamps to the images
             match metadata {
@@ -184,6 +183,7 @@ async fn match_metadata(
                     for element in m {
                         open_and_match(element, &path);
 
+                        // progress
                         current_element += 1;
                         let progress = (current_element as f32) / (total_elements as f32);
 
@@ -195,7 +195,7 @@ async fn match_metadata(
                 }
                 Err(e) => {
                     println!("Error: {}", e);
-                    // display_error(&ctx_clone, e);
+                    // display_error(&ctx_clone, e.as_str()).await;
                     return;
                 }
             }
@@ -234,6 +234,7 @@ async fn get_jsons(path: &PathBuf) -> Vec<async_std::path::PathBuf> {
 struct GPhotosMetadata {
     title: String,
     phototaken_timestamp: i64,
+    // todo geo data
 }
 
 async fn extract_metadata(
@@ -279,11 +280,11 @@ async fn extract_metadata(
     return Ok(all_files_metadata);
 }
 
-async fn display_error(ctx: &egui::Context, message: &str) {
-    egui::Window::new("Error").show(ctx, |ui| {
-        ui.add(egui::Label::new(message));
-    });
-}
+// async fn display_error(ctx: &egui::Context, message: &str) {
+//     egui::Window::new("Error").show(ctx, |ui| {
+//         ui.add(egui::Label::new(message));
+//     });
+// }
 
 fn open_and_match(el: GPhotosMetadata, path: &PathBuf) {
     println!("{:?}", el.title);
@@ -294,10 +295,7 @@ fn open_and_match(el: GPhotosMetadata, path: &PathBuf) {
     FileTime::from_system_time(phototaken_time);
     let phototaken_filetime = FileTime::from_system_time(phototaken_time);
 
-    // Creation time
-    let _time = SystemTime::UNIX_EPOCH + Duration::new(0 as u64, 0);
-    FileTime::from_system_time(_time);
-    let _filetime = FileTime::from_system_time(_time);
+    // todo geo data
 
     let file_path = path.join(&el.title);
 
